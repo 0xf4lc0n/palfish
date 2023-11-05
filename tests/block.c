@@ -1,13 +1,13 @@
-#include "assert.h"
 #include "../src/blowfish.h"
 #include "../src/io.h"
+#include "assert.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 int main(void) {
-  uint8_t *key = read_file_chunk("key.txt", 16);
+  uint8_t *key = (uint8_t *)read_file_chunk("key.txt", 16);
   key_expansion(key, 16);
 
   const uint32_t BASE_L = 0x11223344;

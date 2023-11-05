@@ -4,69 +4,70 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 int main(int argc, char *argv[]) {
   if (argc != 4) {
-    printf("Usage: %s path_to_key_file key_len path_to_file_with_messages",
-           argv[0]);
+    printf("Usage: %s path_to_key_file key_len file_to_encrpyt", argv[0]);
     return 1;
   }
 
   char *key_file = argv[1];
   char key_size = atoi(argv[2]);
-  char *messages_file = argv[3];
+  char *file_to_encrpyt = argv[3];
 
-  uint8_t *key = read_file_chunk(key_file, key_size);
+  double init_time = clock();
+  uint8_t *key = (uint8_t *)read_file_chunk(key_file, key_size);
 
   // Initialize Blowfish with the key
   key_expansion(key, 16);
 
-  uint8_t *messages = read_entire_file(messages_file);
+  char *plaintext = NULL;
+  size_t file_size = read_entire_file(file_to_encrpyt, &plaintext);
 
-  char *eol = strchr((const char *)messages, '\n');
-  char *line_start = (char *)messages;
+  char *encrypted = malloc(sizeof(char) * file_size);
+  char *decrypted = malloc(sizeof(char) * file_size);
   int err = 0;
-  int line_len = 0;
-  char *line = NULL;
-  char *encrypted = NULL;
-  char *decrypted = NULL;
 
-  while (eol != NULL) {
-    line_len = eol - line_start;
-    line = malloc(sizeof(char) * line_len + 1);
-    strncpy(line, line_start, line_len);
-
-    encrypted = malloc(sizeof(char) * line_len + 1);
-    decrypted = malloc(sizeof(char) * line_len + 1);
-
-    printf("Plaintext %s\n", line);
-
-    err = blowfish_encrypt_string(line, encrypted);
-    if (err != 0) {
-      fprintf(stderr, "Failed to encrypt string");
-      return -1;
-    }
-
-    printf("[HEX] Encrypted: ");
-    print_in_hex(encrypted);
-
-    err = blowfish_decrypt_string((const char *)encrypted, decrypted);
-    if (err != 0) {
-      fprintf(stderr, "Failed to decryop string");
-      return -1;
-    }
-
-    printf("Decrypted: %s\n", decrypted);
-    printf("[HEX] Decrypted: ");
-    print_in_hex(decrypted);
-
-    free(line);
-    free(encrypted);
-    free(decrypted);
-
-    line_start += line_len + 1;
-    eol = strchr(line_start, '\n');
+  double encryption_start = clock();
+  err = blowfish_encrypt_string(plaintext, encrypted);
+  double encryption_end = clock();
+  if (err != 0) {
+    fprintf(stderr, "Failed to encrypt message\n");
+    return -1;
   }
+
+  err = save_to_file("encrypted.txt", encrypted, file_size);
+  if (err != 0) {
+    fprintf(stderr, "Failed to save encrypted message to the file\n");
+    return -1;
+  }
+
+  double decryption_start = clock();
+  err = blowfish_decrypt_string(encrypted, file_size, decrypted);
+  double decryption_end = clock();
+  if (err != 0) {
+    fprintf(stderr, "Failed to decrypt message\n");
+    return -1;
+  }
+
+  err = save_to_file("decrypted.txt", decrypted, file_size);
+  if (err != 0) {
+    fprintf(stderr, "Failed to save decrypted message to the file\n");
+    return -1;
+  }
+
+  free(encrypted);
+  free(decrypted);
+
+  double finalize_time = clock();
+  double total_time = (finalize_time - init_time) / CLOCKS_PER_SEC;
+  double encryption_time = (encryption_end - encryption_start) / CLOCKS_PER_SEC;
+  double decryption_time = (decryption_end - decryption_start) / CLOCKS_PER_SEC;
+
+  printf("Encryption time time: %f\n", encryption_time);
+  printf("Decryption time: %f\n", decryption_time);
+  printf("Total execution time: %f\n", total_time);
 
   return 0;
 }

@@ -207,8 +207,8 @@ int is_padding_present(const char *ciphertext) {
   return 1;
 }
 
-int blowfish_decrypt_string(const char *input, char *output) {
-  int len = strlen(input);
+int blowfish_decrypt_string(const char *input, size_t input_len, char *output) {
+  int len = input_len;
 
   for (int i = 0; i < len; i += BLOWFISH_BLOCK_SIZE) {
     uint32_t L = 0, R = 0;
