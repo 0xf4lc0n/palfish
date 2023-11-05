@@ -1,52 +1,72 @@
 #include "blowfish.h"
+#include "io.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-int main(void) {
-  // Define and initialize a 128-bit key
-  uint8_t key[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                     0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
+int main(int argc, char *argv[]) {
+  if (argc != 4) {
+    printf("Usage: %s path_to_key_file key_len path_to_file_with_messages",
+           argv[0]);
+    return 1;
+  }
+
+  char *key_file = argv[1];
+  char key_size = atoi(argv[2]);
+  char *messages_file = argv[3];
+
+  uint8_t *key = read_file_chunk(key_file, key_size);
 
   // Initialize Blowfish with the key
   key_expansion(key, 16);
 
-  // Encrypt a plaintext block
-  const char *plaintext = "H";
-  char encrypted[strlen(plaintext)];
-  char decrypted[strlen(plaintext)];
-  int err;
+  uint8_t *messages = read_entire_file(messages_file);
 
-  memset(encrypted, 0, strlen(plaintext));
-  memset(decrypted, 0, strlen(plaintext));
+  char *eol = strchr((const char *)messages, '\n');
+  char *line_start = (char *)messages;
+  int err = 0;
+  int line_len = 0;
+  char *line = NULL;
+  char *encrypted = NULL;
+  char *decrypted = NULL;
 
-  uint32_t left = 0x11223344;
-  uint32_t right = 0x55667788;
+  while (eol != NULL) {
+    line_len = eol - line_start;
+    line = malloc(sizeof(char) * line_len + 1);
+    strncpy(line, line_start, line_len);
 
-  printf("Plaintext: 0x%08X%08X\n", left, right);
-  blowfish_encrypt_block(&left, &right);
-  printf("Ciphertext: 0x%08X%08X\n", left, right);
-  blowfish_decrypt_block(&left, &right);
-  printf("Decrypted: 0x%08X%08X\n", left, right);
+    encrypted = malloc(sizeof(char) * line_len + 1);
+    decrypted = malloc(sizeof(char) * line_len + 1);
 
-  err = blowfish_encrypt_string((const char *)plaintext, encrypted);
-  if (err != 0) {
-    fprintf(stderr, "Failed to encrypt string");
-    return -1;
+    printf("Plaintext %s\n", line);
+
+    err = blowfish_encrypt_string(line, encrypted);
+    if (err != 0) {
+      fprintf(stderr, "Failed to encrypt string");
+      return -1;
+    }
+
+    printf("[HEX] Encrypted: ");
+    print_in_hex(encrypted);
+
+    err = blowfish_decrypt_string((const char *)encrypted, decrypted);
+    if (err != 0) {
+      fprintf(stderr, "Failed to decryop string");
+      return -1;
+    }
+
+    printf("Decrypted: %s\n", decrypted);
+    printf("[HEX] Decrypted: ");
+    print_in_hex(decrypted);
+
+    free(line);
+    free(encrypted);
+    free(decrypted);
+
+    line_start += line_len + 1;
+    eol = strchr(line_start, '\n');
   }
-
-  printf("Encrypted: ");
-  print_in_hex(encrypted);
-
-  err = blowfish_decrypt_string((const char *)encrypted, decrypted);
-  if (err != 0) {
-    fprintf(stderr, "Failed to decryop string");
-    return -1;
-  }
-
-  printf("Decrypted: ");
-  print_in_hex(decrypted);
-  printf("%s", decrypted);
 
   return 0;
 }

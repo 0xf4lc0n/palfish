@@ -179,8 +179,6 @@ int blowfish_encrypt_string(const char *input, char *output) {
     output[len] = '\0';
   }
 
-  print_in_hex(input);
-
   for (int i = 0; i < len; i += BLOWFISH_BLOCK_SIZE) {
     uint32_t L = 0, R = 0;
     memcpy(&L, input + i, sizeof(uint32_t));
@@ -221,7 +219,7 @@ int blowfish_decrypt_string(const char *input, char *output) {
     memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
   }
 
-  output[strlen(input)] = '\0';
+  output[len] = '\0';
 
   if (is_padding_present(output)) {
     char *unpadded = remove_pkcs7_padding(output);
