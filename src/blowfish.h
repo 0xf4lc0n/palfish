@@ -22,7 +22,13 @@ void blowfish_decrypt_block(uint32_t *L, uint32_t *R);
 // Ecrypt string
 int blowfish_encrypt_string(const char *input, char *output);
 
+// Ecrypt string using OpenMP
+int blowfish_encrypt_string_openmp(const char *input, char *output);
+
 // Decrypt string
 int blowfish_decrypt_string(const char *input, size_t input_len, char *output);
+
+// Decrypt string using OpenMP
+int blowfish_decrypt_string_openmp(const char *input, size_t input_len, char *output);
 
 void print_in_hex(const char *str);

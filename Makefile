@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic -Werror -O2 -fstack-protector-all -fPIE -fPIC -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Wformat-nonliteral -fno-strict-aliasing
+CFLAGS = -fopenmp -Wall -Wextra -Wpedantic -Werror -O2 -fstack-protector-all -fPIE -fPIC -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Wformat-nonliteral -fno-strict-aliasing
 TARGET = target/blowfish
 
 SRCDIR = src

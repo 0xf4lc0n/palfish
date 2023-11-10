@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <omp.h>
 
 // Define P-boxes and S-boxes
 uint32_t P[18];
@@ -116,6 +117,7 @@ void print_in_hex(const char *str) {
 }
 
 char *add_pkcs7_padding(const char *input, int block_size) {
+  // printf("Padding was used\n");
   int len = strlen(input);
   int padding_len = block_size - (len % block_size);
   int padded_input_len = len + padding_len;
@@ -230,5 +232,93 @@ int blowfish_decrypt_string(const char *input, size_t input_len, char *output) {
     }
   }
 
+  return 0;
+}
+
+int blowfish_decrypt_string_openmp(const char *input, size_t input_len, char *output) {
+  int len = input_len;
+
+  #pragma omp parallel for
+  for (int i = 0; i < len; i += BLOWFISH_BLOCK_SIZE) {
+    uint32_t L = 0, R = 0;
+    memcpy(&L, input + i, sizeof(uint32_t));
+    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
+    blowfish_decrypt_block(&L, &R);
+    memcpy(output + i, &L, sizeof(uint32_t));
+    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
+  }
+
+  output[len] = '\0';
+
+  if (is_padding_present(output)) {
+    char *unpadded = remove_pkcs7_padding(output);
+    memcpy(output, unpadded, len);
+    if (output == NULL) {
+      fprintf(stderr, "Failed to unpad input message");
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+// int blowfish_encrypt_string_openmp(const char *input, char *output) {
+//     int n = strlen(input);
+//     // printf("Size: %d\n", n);
+
+//    //int chunksize = n/2;
+
+//     // #pragma omp parallel num_threads(2) default(none) shared(n,chunksize,input,output)
+//     // {
+//     //   int nthread = omp_get_thread_num();
+//     //   #pragma omp for schedule(static,chunksize) 
+//     //   for (int i= chunksize * nthread; i<n; i+=8) {
+//     //       printf("Iter %d being done by thread %d\n", i, nthread);
+//     //       blowfish_encrypt_string((char*)(input + i), (char*)(output + i));
+//     //   }
+//     // }
+//  omp_set_num_threads(8);
+//     int thread_num, num_threads, start, end, i;
+//     #pragma omp parallel private(i,thread_num,num_threads,start,end)
+//     {
+//       thread_num = omp_get_thread_num();
+//       num_threads = omp_get_num_threads();
+//       start = thread_num * n / num_threads;
+//       end = (thread_num + 1) * n / num_threads;
+
+//       for (i = start; i != end; i += 8) {
+//         //printf("%d %d\n", thread_num, i);
+//         blowfish_encrypt_string((char*)(input + i), (char*)(output + i));
+//       }
+//     }
+
+//     return 0;
+// }
+
+int blowfish_encrypt_string_openmp(const char *input, char *output) {
+  int len = strlen(input);
+
+  if (len % BLOWFISH_BLOCK_SIZE != 0) {
+    input = add_pkcs7_padding(input, BLOWFISH_BLOCK_SIZE);
+    if (input == NULL) {
+      fprintf(stderr, "Failed to pad input message");
+      return -1;
+    }
+    output[strlen(input)] = '\0';
+  } else {
+    output[len] = '\0';
+  }
+
+  #pragma omp parallel for
+  for (int i = 0; i < len; i += BLOWFISH_BLOCK_SIZE) {
+    uint32_t L = 0, R = 0;
+    memcpy(&L, input + i, sizeof(uint32_t));
+    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
+
+    blowfish_encrypt_block(&L, &R);
+
+    memcpy(output + i, &L, sizeof(uint32_t));
+    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
+  }
   return 0;
 }
