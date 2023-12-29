@@ -7,10 +7,10 @@
 #include <time.h>
 #include <omp.h>
 
-#define ENCRYPT_FILE_NAME encrypted.txt
-#define DECRYPT_FILE_NAME decrypted.txt
-#define ENCRYPT_FILE_NAME_OMP encrypted_omp.txt
-#define DECRYPT_FILE_NAME_OMP decrypted_omp.txt
+#define ENCRYPTED_FILE_NAME "tmp/encrypted.txt"
+#define DECRYPTED_FILE_NAME "tmp/decrypted.txt"
+#define ENCRYPTED_FILE_NAME_OMP "tmp/encrypted_omp.txt"
+#define DECRYPTED_FILE_NAME_OMP "tmp/decrypted_omp.txt"
 
 int test_impl(char * plaintext, size_t file_size, const char * encrypt_filename, const char * decrypt_filename, void (*encrypt)(const char*, int, char*), void (*decrypt)(const char*, int, char*), double (*get_time)(void), double (*calc_duration)(double, double)) {
   int len = file_size;
@@ -25,7 +25,7 @@ int test_impl(char * plaintext, size_t file_size, const char * encrypt_filename,
   double encryption_start = get_time();
   encrypt(plaintext, len, encrypted);
   double encryption_end = get_time();
-  
+
   err = save_to_file(encrypt_filename, encrypted, file_size);
   if (err != 0) {
     fprintf(stderr, "Failed to save encrypted message to the file\n");
@@ -45,8 +45,8 @@ int test_impl(char * plaintext, size_t file_size, const char * encrypt_filename,
   free(encrypted);
   free(decrypted);
 
-  printf("Encryption time: %f\n", calc_duration(encryption_start, encryption_end));
-  printf("Decryption time: %f\n", calc_duration(decryption_start, decryption_end));
+  printf("Encryption time: %f seconds\n", calc_duration(encryption_start, encryption_end));
+  printf("Decryption time: %f seconds\n", calc_duration(decryption_start, decryption_end));
 
   return 0;
 }
@@ -64,16 +64,18 @@ double calc_duration(double start, double end) {
 }
 
 int test_impl_seq(char *plaintext, size_t file_size) {
-  return test_impl(plaintext, file_size, "e.txt", "d.txt", blowfish_encrypt_string, blowfish_decrypt_string, get_time, calc_duration);
+  return test_impl(plaintext, file_size, ENCRYPTED_FILE_NAME, DECRYPTED_FILE_NAME,
+    blowfish_encrypt_string, blowfish_decrypt_string, get_time, calc_duration);
 }
 
 int test_impl_omp(char *plaintext, size_t file_size) {
-  return test_impl(plaintext, file_size, "e_omp.txt", "d_omp.txt", blowfish_encrypt_string_openmp, blowfish_decrypt_string_openmp, omp_get_wtime, calc_duration_omp);
+  return test_impl(plaintext, file_size, ENCRYPTED_FILE_NAME_OMP, DECRYPTED_FILE_NAME_OMP,
+    blowfish_encrypt_string_openmp, blowfish_decrypt_string_openmp, omp_get_wtime, calc_duration_omp);
 }
 
 int main(int argc, char *argv[]) {
   if (argc != 5) {
-    printf("Usage: %s path_to_key_file key_len file_to_encrpyt mode\n", argv[0]);
+    printf("Usage: %s key_file key_len file_to_encrpyt mode\n", argv[0]);
     return 1;
   }
 
