@@ -25,7 +25,7 @@ int test_impl(char * plaintext, size_t file_size, const char * encrypt_filename,
   double encryption_start = get_time();
   encrypt(plaintext, len, encrypted);
   double encryption_end = get_time();
-  print_in_hex(encrypted, len);
+  
   err = save_to_file(encrypt_filename, encrypted, file_size);
   if (err != 0) {
     fprintf(stderr, "Failed to save encrypted message to the file\n");
