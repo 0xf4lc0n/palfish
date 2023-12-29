@@ -6,7 +6,7 @@ SRCDIR = src
 OBJDIR = obj
 
 # List of source files
-SRCS = $(wildcard $(SRCDIR)/*.c)
+SRCS = $(filter-out src/mpi_impl.c, $(wildcard $(SRCDIR)/*.c))
 
 # List of tests source files
 

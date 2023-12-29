@@ -12,19 +12,20 @@
 #define ENCRYPT_FILE_NAME_OMP encrypted_omp.txt
 #define DECRYPT_FILE_NAME_OMP decrypted_omp.txt
 
-int test_impl(const char * plaintext, size_t file_size, const char * encrypt_filename, const char * decrypt_filename, int (*encrypt)(const char*, char*), int (*decrypt)(const char*, size_t, char*), double (*get_time)(void), double (*calc_duration)(double, double)) {
-  char *encrypted = malloc(sizeof(char) * file_size);
-  char *decrypted = malloc(sizeof(char) * file_size);
+int test_impl(char * plaintext, size_t file_size, const char * encrypt_filename, const char * decrypt_filename, void (*encrypt)(const char*, int, char*), void (*decrypt)(const char*, int, char*), double (*get_time)(void), double (*calc_duration)(double, double)) {
+  int len = file_size;
+  if (is_padding_needed(plaintext)) {
+    plaintext = add_padding(plaintext, &len);
+  }
+
+  char *encrypted = malloc(sizeof(char) * len);
+  char *decrypted = malloc(sizeof(char) * len);
   int err = 0;
 
   double encryption_start = get_time();
-  err = encrypt(plaintext, encrypted);
+  encrypt(plaintext, len, encrypted);
   double encryption_end = get_time();
-  if (err != 0) {
-    fprintf(stderr, "Failed to encrypt message\n");
-    return -1;
-  }
-
+  print_in_hex(encrypted, len);
   err = save_to_file(encrypt_filename, encrypted, file_size);
   if (err != 0) {
     fprintf(stderr, "Failed to save encrypted message to the file\n");
@@ -32,12 +33,8 @@ int test_impl(const char * plaintext, size_t file_size, const char * encrypt_fil
   }
 
   double decryption_start = get_time();
-  err = decrypt(encrypted, file_size, decrypted);
+  decrypt(encrypted, len, decrypted);
   double decryption_end = get_time();
-  if (err != 0) {
-    fprintf(stderr, "Failed to decrypt message\n");
-    return -1;
-  }
 
   err = save_to_file(decrypt_filename, decrypted, file_size);
   if (err != 0) {
@@ -111,5 +108,6 @@ int main(int argc, char *argv[]) {
       break;
   }
 
+  free(plaintext);
   return 0;
 }

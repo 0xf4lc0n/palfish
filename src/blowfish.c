@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <omp.h>
 
 // Define P-boxes and S-boxes
 uint32_t P[18];
@@ -109,216 +108,68 @@ void blowfish_decrypt_block(uint32_t *L, uint32_t *R) {
   *L ^= P[0];
 }
 
-void print_in_hex(const char *str) {
-  for (unsigned long i = 0; i < strlen(str); i++) {
+void print_in_hex(const char *str, int size) {
+  for (int i = 0; i < size; i++) {
     printf("%02X ", (unsigned char)str[i]);
   }
   printf("\n");
 }
 
-char *add_pkcs7_padding(const char *input, int block_size) {
-  // printf("Padding was used\n");
-  int len = strlen(input);
-  int padding_len = block_size - (len % block_size);
-  int padded_input_len = len + padding_len;
-
-  char *padded_input = (char *)malloc(padded_input_len + 1);
-
-  if (padded_input == NULL) {
-    fprintf(stderr, "Failed to allocate memory for padded input");
-    return NULL;
+void blowfish_encrypt_string(const char *input, int input_len, char *output) {
+  for (int i = 0; i < input_len; i += BLOWFISH_BLOCK_SIZE) {
+    uint32_t L = 0, R = 0;
+    memcpy(&L, input + i, sizeof(uint32_t));
+    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
+    blowfish_encrypt_block(&L, &R);
+    memcpy(output + i, &L, sizeof(uint32_t));
+    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
   }
+}
 
-  strcpy(padded_input, input);
-
-  for (int i = len; i < padded_input_len; i++) {
-    padded_input[i] = (char)padding_len;
+void blowfish_decrypt_string(const char *input, int input_len, char *output) {
+  for (int i = 0; i < input_len; i += BLOWFISH_BLOCK_SIZE) {
+    uint32_t L = 0, R = 0;
+    memcpy(&L, input + i, sizeof(uint32_t));
+    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
+    blowfish_decrypt_block(&L, &R);
+    memcpy(output + i, &L, sizeof(uint32_t));
+    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
   }
+}
 
-  padded_input[padded_input_len] = '\0';
+void blowfish_encrypt_string_openmp(const char *input, int input_len, char *output) {
+  #pragma omp parallel for
+  for (int i = 0; i < input_len; i += BLOWFISH_BLOCK_SIZE) {
+    uint32_t L = 0, R = 0;
+    memcpy(&L, input + i, sizeof(uint32_t));
+    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
+    blowfish_encrypt_block(&L, &R);
+    memcpy(output + i, &L, sizeof(uint32_t));
+    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
+  }
+}
 
+void blowfish_decrypt_string_openmp(const char *input, int input_len, char *output) {
+  #pragma omp parallel for
+  for (int i = 0; i < input_len; i += BLOWFISH_BLOCK_SIZE) {
+    uint32_t L = 0, R = 0;
+    memcpy(&L, input + i, sizeof(uint32_t));
+    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
+    blowfish_decrypt_block(&L, &R);
+    memcpy(output + i, &L, sizeof(uint32_t));
+    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
+  }
+}
+
+int is_padding_needed(const char * input) {
+  return strlen(input) % BLOWFISH_BLOCK_SIZE != 0;
+}
+
+// Pad data
+char * add_padding(char * input, int * padded_input_size) {
+  int input_size = strlen(input);
+  *padded_input_size = input_size + BLOWFISH_BLOCK_SIZE - (input_size % BLOWFISH_BLOCK_SIZE);
+  char * padded_input = calloc(*padded_input_size, sizeof(char));
+  memcpy(padded_input, input, input_size);
   return padded_input;
-}
-
-char *remove_pkcs7_padding(const char *input) {
-  int len = strlen(input);
-  int padding_len = (int)input[len - 1];
-
-  if (padding_len > 0 && padding_len <= len) {
-    for (int i = len - padding_len; i < len; i++) {
-      if (input[i] != (char)padding_len) {
-        return NULL;
-      }
-    }
-
-    char *unpadded_input = (char *)malloc(len - padding_len + 1);
-
-    if (unpadded_input == NULL) {
-      fprintf(stderr, "Failed to allocate memory for unpadded input");
-      return NULL;
-    }
-
-    int plain_text_len = len - padding_len;
-    strncpy(unpadded_input, input, plain_text_len);
-    memset(unpadded_input + plain_text_len, 0, padding_len);
-    return unpadded_input;
-  }
-
-  return NULL;
-}
-
-int blowfish_encrypt_string(const char *input, char *output) {
-  int len = strlen(input);
-
-  if (len % BLOWFISH_BLOCK_SIZE != 0) {
-    input = add_pkcs7_padding(input, BLOWFISH_BLOCK_SIZE);
-    if (input == NULL) {
-      fprintf(stderr, "Failed to pad input message");
-      return -1;
-    }
-    output[strlen(input)] = '\0';
-  } else {
-    output[len] = '\0';
-  }
-
-  for (int i = 0; i < len; i += BLOWFISH_BLOCK_SIZE) {
-    uint32_t L = 0, R = 0;
-    memcpy(&L, input + i, sizeof(uint32_t));
-    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
-    blowfish_encrypt_block(&L, &R);
-    memcpy(output + i, &L, sizeof(uint32_t));
-    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
-  }
-
-  return 0;
-}
-
-int is_padding_present(const char *ciphertext) {
-  int len = strlen(ciphertext);
-  int padding_len = ciphertext[strlen(ciphertext) - 1];
-
-  if (padding_len > BLOWFISH_BLOCK_SIZE)
-    return 0;
-
-  for (int i = len - padding_len; i < len; i++) {
-    if (ciphertext[i] != padding_len) {
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
-int blowfish_decrypt_string(const char *input, size_t input_len, char *output) {
-  int len = input_len;
-
-  for (int i = 0; i < len; i += BLOWFISH_BLOCK_SIZE) {
-    uint32_t L = 0, R = 0;
-    memcpy(&L, input + i, sizeof(uint32_t));
-    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
-    blowfish_decrypt_block(&L, &R);
-    memcpy(output + i, &L, sizeof(uint32_t));
-    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
-  }
-
-  output[len] = '\0';
-
-  if (is_padding_present(output)) {
-    char *unpadded = remove_pkcs7_padding(output);
-    memcpy(output, unpadded, len);
-    if (output == NULL) {
-      fprintf(stderr, "Failed to unpad input message");
-      return -1;
-    }
-  }
-
-  return 0;
-}
-
-int blowfish_decrypt_string_openmp(const char *input, size_t input_len, char *output) {
-  int len = input_len;
-
-  #pragma omp parallel for
-  for (int i = 0; i < len; i += BLOWFISH_BLOCK_SIZE) {
-    uint32_t L = 0, R = 0;
-    memcpy(&L, input + i, sizeof(uint32_t));
-    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
-    blowfish_decrypt_block(&L, &R);
-    memcpy(output + i, &L, sizeof(uint32_t));
-    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
-  }
-
-  output[len] = '\0';
-
-  if (is_padding_present(output)) {
-    char *unpadded = remove_pkcs7_padding(output);
-    memcpy(output, unpadded, len);
-    if (output == NULL) {
-      fprintf(stderr, "Failed to unpad input message");
-      return -1;
-    }
-  }
-
-  return 0;
-}
-
-// int blowfish_encrypt_string_openmp(const char *input, char *output) {
-//     int n = strlen(input);
-//     // printf("Size: %d\n", n);
-
-//    //int chunksize = n/2;
-
-//     // #pragma omp parallel num_threads(2) default(none) shared(n,chunksize,input,output)
-//     // {
-//     //   int nthread = omp_get_thread_num();
-//     //   #pragma omp for schedule(static,chunksize) 
-//     //   for (int i= chunksize * nthread; i<n; i+=8) {
-//     //       printf("Iter %d being done by thread %d\n", i, nthread);
-//     //       blowfish_encrypt_string((char*)(input + i), (char*)(output + i));
-//     //   }
-//     // }
-//  omp_set_num_threads(8);
-//     int thread_num, num_threads, start, end, i;
-//     #pragma omp parallel private(i,thread_num,num_threads,start,end)
-//     {
-//       thread_num = omp_get_thread_num();
-//       num_threads = omp_get_num_threads();
-//       start = thread_num * n / num_threads;
-//       end = (thread_num + 1) * n / num_threads;
-
-//       for (i = start; i != end; i += 8) {
-//         //printf("%d %d\n", thread_num, i);
-//         blowfish_encrypt_string((char*)(input + i), (char*)(output + i));
-//       }
-//     }
-
-//     return 0;
-// }
-
-int blowfish_encrypt_string_openmp(const char *input, char *output) {
-  int len = strlen(input);
-
-  if (len % BLOWFISH_BLOCK_SIZE != 0) {
-    input = add_pkcs7_padding(input, BLOWFISH_BLOCK_SIZE);
-    if (input == NULL) {
-      fprintf(stderr, "Failed to pad input message");
-      return -1;
-    }
-    output[strlen(input)] = '\0';
-  } else {
-    output[len] = '\0';
-  }
-
-  #pragma omp parallel for
-  for (int i = 0; i < len; i += BLOWFISH_BLOCK_SIZE) {
-    uint32_t L = 0, R = 0;
-    memcpy(&L, input + i, sizeof(uint32_t));
-    memcpy(&R, input + i + sizeof(uint32_t), sizeof(uint32_t));
-
-    blowfish_encrypt_block(&L, &R);
-
-    memcpy(output + i, &L, sizeof(uint32_t));
-    memcpy(output + i + sizeof(uint32_t), &R, sizeof(uint32_t));
-  }
-  return 0;
 }
