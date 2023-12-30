@@ -32,10 +32,10 @@ void blowfish_decrypt_string(const char *input, int input_len, char *output);
 void blowfish_decrypt_string_openmp(const char *input, int input_len, char *output);
 
 // Check if padding is needed
-int is_padding_needed(const char * input);
+int is_padding_needed(int data_size);
 
 // Pad data
-char * add_padding(char * input, int * padded_input_size);
+char * add_padding(char * data, int data_size, int * padded_data_size);
 
 // Print string in HEX representation
 void print_in_hex(const char *str, int size);

@@ -7,7 +7,7 @@
 
 int main(int argc, char** argv) {
     if (argc != 7) {
-        printf("Usage: %s key_file key_length input_file output_file mode(0 - encrypt, other integer - decrypt) use_open_mp(1 = true)\n", argv[0]);
+        printf("Usage: %s key_file key_length input_file output_file mode(0 - encrypt, other integer - decrypt) omp_num_threads(0 - don't use openmp)\n", argv[0]);
         return 1;
     }
 
@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     char *input_file = argv[3];
     char *output_file = argv[4];
     int mode = atoi(argv[5]);
-    int use_open_mp = atoi(argv[6]);
+    int omp_num_threads = atoi(argv[6]);
     int input_file_size, input_length, file_saving_err = 0;
     double start_time, end_time;
 
@@ -30,11 +30,10 @@ int main(int argc, char** argv) {
 
     char *input_array = NULL;
     if (rank == 0) {
-        input_array = (char*)malloc(input_file_size * sizeof(char));
         input_file_size = read_entire_file(input_file, &input_array);
         input_length = input_file_size;
-        if (is_padding_needed(input_array)) {
-            input_array = add_padding(input_array, &input_length);
+        if (is_padding_needed(input_file_size)) {
+            input_array = add_padding(input_array, input_file_size, &input_length);
         }
         start_time = MPI_Wtime();
     }
@@ -58,13 +57,17 @@ int main(int argc, char** argv) {
 
     char *local_output_array = (char*)malloc(local_input_array_size * sizeof(char));
     if (mode) {
-        if (use_open_mp) {
+        if (omp_num_threads > 0) {
+            omp_set_dynamic(0);
+            omp_set_num_threads(omp_num_threads);
             blowfish_decrypt_string_openmp(local_input_array, local_input_array_size, local_output_array);
         } else {
             blowfish_decrypt_string(local_input_array, local_input_array_size, local_output_array);
         }
     } else {
-        if (use_open_mp) {
+        if (omp_num_threads > 0) {
+            omp_set_dynamic(0);
+            omp_set_num_threads(omp_num_threads);
             blowfish_encrypt_string_openmp(local_input_array, local_input_array_size, local_output_array);
         } else {
             blowfish_encrypt_string(local_input_array, local_input_array_size, local_output_array);

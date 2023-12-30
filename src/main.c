@@ -14,8 +14,8 @@
 
 int test_impl(char * plaintext, size_t file_size, const char * encrypt_filename, const char * decrypt_filename, void (*encrypt)(const char*, int, char*), void (*decrypt)(const char*, int, char*), double (*get_time)(void), double (*calc_duration)(double, double)) {
   int len = file_size;
-  if (is_padding_needed(plaintext)) {
-    plaintext = add_padding(plaintext, &len);
+  if (is_padding_needed(file_size)) {
+    plaintext = add_padding(plaintext, file_size, &len);
   }
 
   char *encrypted = malloc(sizeof(char) * len);
@@ -74,8 +74,8 @@ int test_impl_omp(char *plaintext, size_t file_size) {
 }
 
 int main(int argc, char *argv[]) {
-  if (argc != 5) {
-    printf("Usage: %s key_file key_len file_to_encrpyt mode\n", argv[0]);
+  if (argc != 6) {
+    printf("Usage: %s key_file key_len file_to_encrpyt mode omp_num_threads\n", argv[0]);
     return 1;
   }
 
@@ -83,6 +83,7 @@ int main(int argc, char *argv[]) {
   char key_size = atoi(argv[2]);
   char *file_to_encrpyt = argv[3];
   int mode = atoi(argv[4]);
+  int omp_num_threads = atoi(argv[5]);
 
   uint8_t *key = (uint8_t *)read_file_chunk(key_file, key_size);
 
@@ -98,6 +99,8 @@ int main(int argc, char *argv[]) {
       test_impl_seq(plaintext, file_size);
       break;
     case 1:
+      omp_set_dynamic(0);
+      omp_set_num_threads(omp_num_threads);
       printf("--- OpenMP implementation ---\n");
       test_impl_omp(plaintext, file_size);
       break;

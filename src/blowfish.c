@@ -161,15 +161,14 @@ void blowfish_decrypt_string_openmp(const char *input, int input_len, char *outp
   }
 }
 
-int is_padding_needed(const char * input) {
-  return strlen(input) % BLOWFISH_BLOCK_SIZE != 0;
+int is_padding_needed(int data_size) {
+  return data_size % BLOWFISH_BLOCK_SIZE != 0;
 }
 
 // Pad data
-char * add_padding(char * input, int * padded_input_size) {
-  int input_size = strlen(input);
-  *padded_input_size = input_size + BLOWFISH_BLOCK_SIZE - (input_size % BLOWFISH_BLOCK_SIZE);
-  char * padded_input = calloc(*padded_input_size, sizeof(char));
-  memcpy(padded_input, input, input_size);
-  return padded_input;
+char * add_padding(char * data, int data_size, int * padded_data_size) {
+  *padded_data_size = data_size + BLOWFISH_BLOCK_SIZE - (data_size % BLOWFISH_BLOCK_SIZE);
+  char * padded_data = calloc(*padded_data_size, sizeof(char));
+  memcpy(padded_data, data, data_size);
+  return padded_data;
 }
