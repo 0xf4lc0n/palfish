@@ -20,9 +20,22 @@ void blowfish_encrypt_block(uint32_t *L, uint32_t *R);
 void blowfish_decrypt_block(uint32_t *L, uint32_t *R);
 
 // Ecrypt string
-int blowfish_encrypt_string(const char *input, char *output);
+void blowfish_encrypt_string(const char *input, int input_len, char *output);
+
+// Ecrypt string using OpenMP
+void blowfish_encrypt_string_openmp(const char *input, int input_len, char *output);
 
 // Decrypt string
-int blowfish_decrypt_string(const char *input, size_t input_len, char *output);
+void blowfish_decrypt_string(const char *input, int input_len, char *output);
 
-void print_in_hex(const char *str);
+// Decrypt string using OpenMP
+void blowfish_decrypt_string_openmp(const char *input, int input_len, char *output);
+
+// Check if padding is needed
+int is_padding_needed(int data_size);
+
+// Pad data
+char * add_padding(char * data, int data_size, int * padded_data_size);
+
+// Print string in HEX representation
+void print_in_hex(const char *str, int size);
