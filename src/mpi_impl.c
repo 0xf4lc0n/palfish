@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     uint8_t *key = (uint8_t *)read_file_chunk(key_file, key_size);
-    key_expansion(key, 16);
+    key_expansion(key, key_size);
 
     char *input_array = NULL;
     if (rank == 0) {

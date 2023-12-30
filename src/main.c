@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
   uint8_t *key = (uint8_t *)read_file_chunk(key_file, key_size);
 
   // Initialize Blowfish with the key
-  key_expansion(key, 16);
+  key_expansion(key, key_size);
 
   char *plaintext = NULL;
   size_t file_size = read_entire_file(file_to_encrpyt, &plaintext);
